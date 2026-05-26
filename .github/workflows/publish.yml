@@ -30,6 +30,12 @@ jobs:
           registry-url: https://registry.npmjs.org
           cache: pnpm
 
+      - name: Sync package version from release tag
+        if: github.event_name == 'release'
+        run: npm version "${RELEASE_TAG#v}" --no-git-tag-version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 

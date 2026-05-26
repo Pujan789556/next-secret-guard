@@ -56,6 +56,16 @@ When suggesting a new rule or preset, include:
 - Explain the security impact of the change.
 - Prefer small, explicit heuristics over complex parsing.
 
+## Versioning
+
+This project uses semantic versioning with release automation based on conventional commits:
+
+- `fix:` for patch releases
+- `feat:` for minor releases
+- `feat!:` or `BREAKING CHANGE:` for major releases
+
+Keep commit messages and PR titles aligned with the kind of release you want the change to drive.
+
 ## Release checklist
 
 Before a release, run:
