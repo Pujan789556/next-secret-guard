@@ -14,12 +14,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-org/next-secret-guard.git"
+    "url": "https://github.com/Pujan789556/next-secret-guard.git"
   },
   "bugs": {
-    "url": "https://github.com/your-org/next-secret-guard/issues"
+    "url": "https://github.com/Pujan789556/next-secret-guard/issues"
   },
-  "homepage": "https://github.com/your-org/next-secret-guard#readme",
+  "homepage": "https://github.com/Pujan789556/next-secret-guard#readme",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
