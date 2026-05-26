@@ -10,6 +10,8 @@ test("client boundary helpers identify client and server-only sources", () => {
 
   expect(isClientComponentSource(clientSource)).toBe(true);
   expect(isServerOnlyModule("src/server/db.ts", serverSource)).toBe(true);
+  expect(isServerOnlyModule("src/server/db.ts", 'export const url = process.env.DATABASE_URL;')).toBe(true);
+  expect(isServerOnlyModule("src/server/db.ts", 'import { PrismaClient } from "@prisma/client";')).toBe(true);
 });
 
 test("import graph resolves alias imports and reachable files from a client root", () => {
