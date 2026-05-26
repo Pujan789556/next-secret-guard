@@ -134,6 +134,193 @@ If your repository uses a config file:
 npx next-secret-guard scan --config next-secret-guard.config.ts
 ```
 
+## Code preview: risky patterns detected
+
+The examples below are intentionally unsafe and are shown only to demonstrate what `next-secret-guard` can detect.
+
+### 1. Secret used inside a Client Component
+
+```tsx
+"use client";
+
+export function RiskyClientComponent() {
+  // Risky: Client Components run in the browser.
+  // Server-only secrets must not be referenced here.
+  console.log(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  console.log(process.env.STRIPE_SECRET_KEY);
+  console.log(process.env.DATABASE_URL);
+
+  return <div>Risky client component</div>;
+}
+```
+
+This is risky because `"use client"` marks the component as client-side code. Server-only secrets should be moved to Route Handlers, Server Actions, Server Components, or backend services.
+
+Expected scanner output:
+
+```text
+✖ HIGH  Secret used in Client Component
+  File: components/RiskyClientComponent.tsx
+  Variable: SUPABASE_SERVICE_ROLE_KEY
+  Suggestion: Move this logic to a server-only module, Route Handler, or Server Action.
+```
+
+### 2. Dangerous `NEXT_PUBLIC_*` secret name
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_fake_public_key
+
+# Risky: NEXT_PUBLIC_* variables are exposed to the browser bundle.
+NEXT_PUBLIC_STRIPE_SECRET_KEY=sk_test_do_not_use_this
+NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY=fake_service_role_key_do_not_use
+```
+
+`NEXT_PUBLIC_*` should only be used for values that are safe to expose publicly. Publishable keys are okay. Secret keys, service role keys, private tokens, and database credentials are not okay.
+
+Expected scanner output:
+
+```text
+✖ HIGH  Dangerous public environment variable
+  File: .env.example
+  Variable: NEXT_PUBLIC_STRIPE_SECRET_KEY
+  Suggestion: Remove NEXT_PUBLIC_ from secrets. Only expose publishable/public keys.
+```
+
+### 3. Supabase service role key misuse
+
+```ts
+// Risky demo:
+// Supabase service role keys bypass Row Level Security.
+// Keep them in server-only modules, Route Handlers, or backend services.
+
+export function createRiskySupabaseAdminClient() {
+  return {
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  };
+}
+```
+
+Supabase service role keys must never be reachable from client-side code. Admin clients should live in files like `src/server/supabase-admin.ts`. Add `import "server-only";` when using Next.js App Router.
+
+Safe version:
+
+```ts
+import "server-only";
+
+export function createSupabaseAdminClient() {
+  return {
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  };
+}
+```
+
+### 4. Stripe secret key misuse
+
+```ts
+// Risky demo:
+// Stripe secret keys must remain server-side.
+
+export function createRiskyStripeClient() {
+  return {
+    secretKey: process.env.STRIPE_SECRET_KEY,
+  };
+}
+```
+
+Stripe secret keys can access sensitive payment operations. Use secret keys only in Route Handlers, Server Actions, or backend services. Client-side code should use publishable keys only.
+
+Safe public variable example:
+
+```env
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_fake_public_key
+STRIPE_SECRET_KEY=sk_test_fake_secret_key
+```
+
+### 5. Prisma `DATABASE_URL` misuse
+
+```ts
+// Risky demo:
+// DATABASE_URL gives direct access to your database.
+// Prisma/database connections must stay server-side.
+
+export function createRiskyDatabaseConnection() {
+  return {
+    databaseUrl: process.env.DATABASE_URL,
+  };
+}
+```
+
+`DATABASE_URL` should never be imported into Client Components. Prisma should only run on the server. Keep database clients inside server-only modules.
+
+Safe structure example:
+
+```text
+src/
+  server/
+    db.ts        # Prisma client here
+  app/
+    api/
+      users/
+        route.ts # Uses server/db.ts safely
+```
+
+### Example full scanner output
+
+```bash
+npx next-secret-guard scan
+```
+
+```text
+✖ HIGH  Secret used in Client Component
+  File: components/RiskyClientComponent.tsx
+  Variable: SUPABASE_SERVICE_ROLE_KEY
+  Suggestion: Move this logic to a server-only module, Route Handler, or Server Action.
+
+✖ HIGH  Dangerous public environment variable
+  File: .env.example
+  Variable: NEXT_PUBLIC_STRIPE_SECRET_KEY
+  Suggestion: Remove NEXT_PUBLIC_ from secrets. Only expose publishable/public keys.
+
+✖ HIGH  Supabase service role key misuse
+  File: lib/risky-supabase-client.ts
+  Variable: SUPABASE_SERVICE_ROLE_KEY
+  Suggestion: Keep service role usage in server-only files.
+
+✖ HIGH  Stripe secret key misuse
+  File: lib/risky-stripe-client.ts
+  Variable: STRIPE_SECRET_KEY
+  Suggestion: Use Stripe secret keys only in server-side code.
+
+✖ HIGH  Prisma DATABASE_URL misuse
+  File: lib/risky-prisma-client.ts
+  Variable: DATABASE_URL
+  Suggestion: Keep Prisma and database connections on the server.
+```
+
+The exact output may differ depending on the installed version of `next-secret-guard`.
+
+### Safe usage summary
+
+| Risky pattern | Safer approach |
+|---|---|
+| `process.env.SECRET_KEY` inside `"use client"` | Move logic to a Server Component, Server Action, Route Handler, or backend service |
+| `NEXT_PUBLIC_STRIPE_SECRET_KEY` | Use `STRIPE_SECRET_KEY` only on the server |
+| `NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY` | Use service role key only in a server-only admin client |
+| `DATABASE_URL` imported by client code | Keep Prisma/database code under `src/server` |
+| Shared lib file with secrets | Split into `lib/public-*` and `server/*` modules |
+
+Safe public config example:
+
+```ts
+export const publicConfig = {
+  supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  stripePublishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+};
+```
+
 ## What can go wrong?
 
 Here are a few common failure modes in Next.js applications:
