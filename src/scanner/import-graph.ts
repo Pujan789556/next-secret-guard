@@ -2,7 +2,8 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import type { ImportEdge, ImportGraph } from "./types";
 
-const STATIC_IMPORT_PATTERN = /^\s*import\s+(?:type\s+)?(?:[^'"]+\s+from\s+)?['"]([^'"]+)['"]\s*;?\s*$/;
+const STATIC_MODULE_PATTERN =
+  /^\s*(?:import\s+(?:type\s+)?(?:[^'"]+\s+from\s+)?|export\s+(?:type\s+)?(?:\*|\{[^}]*\})\s+from\s+)['"]([^'"]+)['"]\s*;?\s*$/;
 const EXTENSIONS = [".ts", ".tsx", ".js", ".jsx"];
 
 function isRelativeSpecifier(specifier: string): boolean {
@@ -59,7 +60,7 @@ function resolveTarget(importer: string, specifier: string, projectRoot: string)
 }
 
 function extractEdge(line: string, lineNumber: number, importer: string, projectRoot: string): ImportEdge | undefined {
-  const match = line.match(STATIC_IMPORT_PATTERN);
+  const match = line.match(STATIC_MODULE_PATTERN);
 
   if (!match) {
     return undefined;

@@ -70,7 +70,8 @@ function createIssue(
     file,
     line,
     variableName,
-    suggestion
+    suggestion,
+    trace: [file]
   };
 }
 

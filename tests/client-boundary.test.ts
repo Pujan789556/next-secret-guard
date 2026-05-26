@@ -30,3 +30,16 @@ test("import graph resolves alias imports and reachable files from a client root
   expect(graph.get(files[0])?.[0]?.target).toBe(files[1]);
   expect(graph.get(files[1])?.[0]?.target).toBe(files[2]);
 });
+
+test("import graph resolves export-from barrel files", () => {
+  const root = path.resolve("tests/fixtures/import-trace");
+  const files = [
+    path.resolve(root, "components/UserTable.tsx"),
+    path.resolve(root, "src/lib/supabase.ts"),
+    path.resolve(root, "src/lib/supabase-admin.ts")
+  ];
+  const graph = buildImportGraph(files, root);
+
+  expect(graph.get(files[0])?.[0]?.target).toBe(files[1]);
+  expect(graph.get(files[1])?.[0]?.target).toBe(files[2]);
+});

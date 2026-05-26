@@ -40,9 +40,7 @@ function formatTable(headers: string[], rows: string[][]): string {
 }
 
 function renderIssueTable(issue: Issue, index: number): string {
-  const path = issue.message.startsWith("Reachability path:")
-    ? issue.message.slice("Reachability path:".length).trim()
-    : issue.file;
+  const path = issue.trace && issue.trace.length > 0 ? issue.trace.join(" -> ") : issue.file;
 
   const rows = [
     ["#", `${index}`],

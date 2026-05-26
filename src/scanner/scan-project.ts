@@ -79,7 +79,7 @@ export async function scanProject(options: ScanProjectOptions = {}): Promise<Sca
 
   for (const rootFile of clientRoots) {
     const rootRelative = toPosixRelative(root, rootFile);
-    const stack: Array<{ file: string; chain: string[]; entryLine: number }> = [
+    const queue: Array<{ file: string; chain: string[]; entryLine: number }> = [
       {
         file: rootFile,
         chain: [rootRelative],
@@ -88,8 +88,8 @@ export async function scanProject(options: ScanProjectOptions = {}): Promise<Sca
     ];
     const visited = new Set<string>();
 
-    while (stack.length > 0) {
-      const current = stack.pop();
+    for (let cursor = 0; cursor < queue.length; cursor += 1) {
+      const current = queue[cursor];
       if (!current || visited.has(current.file)) {
         continue;
       }
@@ -100,6 +100,7 @@ export async function scanProject(options: ScanProjectOptions = {}): Promise<Sca
       contentCache.set(current.file, currentSource);
       const currentRelative = toPosixRelative(root, current.file);
       const edges = graph.get(current.file) ?? [];
+      const currentIsServerOnly = isServerOnlyModule(currentRelative, currentSource, config.serverOnlyPaths);
 
       for (const envIssue of detectEnvIssues({
         file: currentRelative,
@@ -109,13 +110,32 @@ export async function scanProject(options: ScanProjectOptions = {}): Promise<Sca
         allowedPublicEnv: config.allowedPublicEnv,
         presets: presetDefinitions
       })) {
+        if (currentIsServerOnly && current.chain.length > 1) {
+          const issueId = `reachability-secret:${rootRelative}:${currentRelative}:${envIssue.variableName}`;
+          if (!issueIds.has(issueId)) {
+            issueIds.add(issueId);
+            issues.push({
+              id: issueId,
+              severity: "HIGH",
+              title: "Client component reaches server-only secret",
+              message: `${envIssue.variableName} is reachable from a Client Component.`,
+              file: rootRelative,
+              line: current.entryLine,
+              variableName: envIssue.variableName,
+              suggestion: serverOnlySuggestion(),
+              trace: current.chain
+            });
+          }
+          continue;
+        }
+
         if (!issueIds.has(envIssue.id)) {
           issueIds.add(envIssue.id);
           issues.push(envIssue);
         }
       }
 
-      if (isServerOnlyModule(currentRelative, currentSource, config.serverOnlyPaths)) {
+      if (currentIsServerOnly) {
         continue;
       }
 
@@ -126,25 +146,55 @@ export async function scanProject(options: ScanProjectOptions = {}): Promise<Sca
         const chain = [...current.chain, targetRelative];
 
         if (isServerOnlyModule(targetRelative, targetSource, config.serverOnlyPaths)) {
-          const issueId = `reachability:${rootRelative}:${targetRelative}`;
-          if (!issueIds.has(issueId)) {
-            issueIds.add(issueId);
-            issues.push({
-              id: issueId,
-              severity: "HIGH",
-              title: "Client component reaches server-only module",
-              message: `Reachability path: ${formatChain(chain)}`,
-              file: rootRelative,
-              line: current.entryLine,
-              variableName: targetRelative,
-              suggestion: serverOnlySuggestion()
-            });
+          const targetEnvIssues = detectEnvIssues({
+            file: targetRelative,
+            source: targetSource,
+            serverEnvNames: BASE_SERVER_ENV_NAMES,
+            secretPatterns: config.secretPatterns,
+            allowedPublicEnv: config.allowedPublicEnv,
+            presets: presetDefinitions
+          });
+
+          if (targetEnvIssues.length > 0) {
+            for (const targetEnvIssue of targetEnvIssues) {
+              const issueId = `reachability-secret:${rootRelative}:${targetRelative}:${targetEnvIssue.variableName}`;
+              if (!issueIds.has(issueId)) {
+                issueIds.add(issueId);
+                issues.push({
+                  id: issueId,
+                  severity: "HIGH",
+                  title: "Client component reaches server-only secret",
+                  message: `${targetEnvIssue.variableName} is reachable from a Client Component.`,
+                  file: rootRelative,
+                  line: current.entryLine,
+                  variableName: targetEnvIssue.variableName,
+                  suggestion: serverOnlySuggestion(),
+                  trace: chain
+                });
+              }
+            }
+          } else {
+            const issueId = `reachability:${rootRelative}:${targetRelative}`;
+            if (!issueIds.has(issueId)) {
+              issueIds.add(issueId);
+              issues.push({
+                id: issueId,
+                severity: "HIGH",
+                title: "Client component reaches server-only module",
+                message: "Server-only module is reachable from a Client Component.",
+                file: rootRelative,
+                line: current.entryLine,
+                variableName: targetRelative,
+                suggestion: serverOnlySuggestion(),
+                trace: chain
+              });
+            }
           }
           continue;
         }
 
         if (!visited.has(edge.target)) {
-          stack.push({
+          queue.push({
             file: edge.target,
             chain,
             entryLine: current.entryLine === 1 ? edge.line : current.entryLine

@@ -9,6 +9,7 @@ export interface Issue {
   line: number;
   variableName: string;
   suggestion: string;
+  trace?: string[];
 }
 
 export interface ScanSummary {
