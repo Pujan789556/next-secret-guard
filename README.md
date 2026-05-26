@@ -1,16 +1,19 @@
 # next-secret-guard
 
-CLI-first guardrails for Next.js secret exposure.
+> CLI-first guardrails for accidental secret exposure in Next.js apps.
 
-`next-secret-guard` helps catch a very specific class of mistakes that can turn private values into client-reachable code: environment variables used in the wrong place, server-only modules pulled into client boundaries, and other accidental paths that make secrets easier to leak than they should be.
+[![CI](https://github.com/Pujan789556/next-secret-guard/actions/workflows/ci.yml/badge.svg)](https://github.com/Pujan789556/next-secret-guard/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)](https://www.typescriptlang.org/)
 
-It is designed for real-world Next.js apps, not as a generic env validator, not as a replacement for Next.js, ESLint, or a full security scanner, and not as a substitute for code review. It is a fast preflight check that helps teams catch risky patterns before they ship.
+`next-secret-guard` catches the kinds of mistakes that most often turn private values into client-reachable code in a Next.js app:
 
-## Introduction
+- environment variables used in the wrong place
+- `NEXT_PUBLIC_` values that look suspiciously sensitive
+- server-only modules imported into Client Component reachability paths
+- shared utilities that accidentally drag secret-bearing code toward the browser bundle
 
-Next.js makes server/client boundaries powerful, but also easy to misunderstand. A variable prefixed with `NEXT_PUBLIC_` is intentionally exposed to the browser bundle. A server-only module can become indirectly reachable from a Client Component if the import graph is not carefully separated. A single mistaken import can move sensitive logic into code that runs on the client.
-
-`next-secret-guard` scans for those practical mistakes and reports them with clear severity levels so developers can fix issues before production.
+It is designed for real-world Next.js apps, not as a generic env validator, not as a replacement for Next.js, ESLint, or a full security scanner, and not as a substitute for code review. It is a fast, CLI-first preflight check that helps teams catch risky patterns before they ship.
 
 ## Why this exists
 
@@ -31,6 +34,83 @@ The cost of these mistakes can be high:
 - incident response becomes slower because the leak is embedded in deployed client code
 
 This package exists to reduce that risk in the part of the workflow where it is easiest to prevent: before merge, before deploy, and before production traffic sees it.
+
+## What it does
+
+`next-secret-guard` scans your codebase for practical secret-exposure risks and reports them with severity levels so teams can prioritize fixes:
+
+- suspicious `process.env` usage in Client Components
+- server-only module reachability from client-side code
+- risky `NEXT_PUBLIC_*` naming patterns
+- provider-specific secret patterns for Supabase, Stripe, Prisma, OpenAI, and Auth.js / Clerk-style setups
+
+## Install
+
+```bash
+npm install -D next-secret-guard
+```
+
+Other package managers:
+
+```bash
+pnpm add -D next-secret-guard
+yarn add -D next-secret-guard
+bun add -d next-secret-guard
+```
+
+## Try it now
+
+Run a scan from the root of your Next.js project:
+
+```bash
+npx next-secret-guard scan
+```
+
+Interactive example:
+
+```text
+$ npx next-secret-guard scan
+
+next-secret-guard scan
+
+Root: /Users/me/my-next-app
+Files scanned: 42
+Fail on: HIGH, MEDIUM
+Issues found: 1
+
+HIGH  components/UserTable.tsx
+  Client component reaches server-only module
+  Reachability path: components/UserTable.tsx -> src/lib/users.ts -> src/server/db.ts
+
+Summary: 1 high, 0 medium, 0 low, 0 info
+Exit code: 1 when an issue matches failOn, otherwise 0
+```
+
+Switch to JSON for automation:
+
+```bash
+npx next-secret-guard scan --json
+```
+
+Use CI mode to make the command fail when issues meet your configured threshold:
+
+```bash
+npx next-secret-guard scan --ci
+```
+
+## Quick start
+
+If you want the shortest possible path:
+
+```bash
+npx next-secret-guard scan --root .
+```
+
+If your repository uses a config file:
+
+```bash
+npx next-secret-guard scan --config next-secret-guard.config.ts
+```
 
 ## What can go wrong?
 
@@ -71,70 +151,38 @@ It does not:
 
 Treat it as a guardrail, not a complete security audit.
 
-## Installation
-
-```bash
-npm install -D next-secret-guard
-```
-
-Or with other package managers:
-
-```bash
-pnpm add -D next-secret-guard
-yarn add -D next-secret-guard
-bun add -d next-secret-guard
-```
-
-## Quick start
-
-Run the scanner from the project root:
-
-```bash
-npx next-secret-guard
-```
-
-Or run an explicit scan command if your setup prefers subcommands:
-
-```bash
-npx next-secret-guard scan
-```
-
-If you want machine-readable output for CI:
-
-```bash
-npx next-secret-guard scan --format json
-```
-
 ## CLI usage
 
 Typical commands:
 
 ```bash
-npx next-secret-guard
 npx next-secret-guard scan
-npx next-secret-guard scan --format json
-npx next-secret-guard scan --fail-on high
+npx next-secret-guard scan --json
+npx next-secret-guard scan --ci
+npx next-secret-guard scan --preset supabase
+npx next-secret-guard scan --preset supabase,stripe
 npx next-secret-guard scan --config .next-secret-guard.json
 ```
 
 Useful flags:
 
+- `--root <path>` scan a different project root
+- `--ci` exit with code 1 when findings match the configured `failOn` severities
+- `--json` print a JSON report
+- `--preset <name>` enable one or more provider presets
+- `--fail-on <severity>` override the configured CI threshold for a specific run
 - `--config <path>` load a custom config file
-- `--format text|json` choose human-readable or machine-readable output
-- `--fail-on <severity>` override the configured CI thresholds for a specific run
-- `--ignore <pattern>` ignore files or directories for known-safe cases
-- `--include <pattern>` scope scanning to specific paths
 
-Example: fail only on high-severity findings during local development, but keep informational findings visible:
+Example: override the CI threshold for a specific run:
 
 ```bash
-npx next-secret-guard scan --fail-on HIGH
+npx next-secret-guard scan --ci --fail-on HIGH
 ```
 
 Example: run a full scan and output JSON for automation:
 
 ```bash
-npx next-secret-guard scan --format json > secret-guard-report.json
+npx next-secret-guard scan --json > secret-guard-report.json
 ```
 
 ## Example: Supabase service role leak
