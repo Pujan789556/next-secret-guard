@@ -1,9 +1,12 @@
 # next-secret-guard
 
+![npm version](https://img.shields.io/npm/v/next-secret-guard)
+![npm downloads](https://img.shields.io/npm/dm/next-secret-guard)
+![license](https://img.shields.io/npm/l/next-secret-guard)
+![CI](https://github.com/Pujan789556/next-secret-guard/actions/workflows/ci.yml/badge.svg)
+
 > CLI-first guardrails for accidental secret exposure in Next.js apps.
 
-[![CI](https://github.com/Pujan789556/next-secret-guard/actions/workflows/ci.yml/badge.svg)](https://github.com/Pujan789556/next-secret-guard/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)](https://www.typescriptlang.org/)
 
 `next-secret-guard` catches the kinds of mistakes that most often turn private values into client-reachable code in a Next.js app:
@@ -14,6 +17,10 @@
 - shared utilities that accidentally drag secret-bearing code toward the browser bundle
 
 It is designed for real-world Next.js apps, not as a generic env validator, not as a replacement for Next.js, ESLint, or a full security scanner, and not as a substitute for code review. It is a fast, CLI-first preflight check that helps teams catch risky patterns before they ship.
+
+## Project status
+
+`next-secret-guard` is in early active development. The current release focuses on practical static checks for common Next.js secret exposure mistakes. APIs, rules, and configuration may evolve before v1.0.0.
 
 ## Why this exists
 

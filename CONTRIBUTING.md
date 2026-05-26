@@ -2,49 +2,66 @@
 
 Thanks for helping improve `next-secret-guard`.
 
-## What to focus on
+We appreciate bug reports, rule ideas, documentation improvements, and focused pull requests that make the scanner more useful without making it noisy.
 
-- Keep the project narrow: Next.js secret-exposure guardrails.
-- Prefer clear, actionable findings over noisy heuristics.
-- Avoid turning the tool into a general-purpose SAST platform.
-
-## Local workflow
-
-1. Install dependencies.
-2. Make your change.
-3. Run the test suite.
-4. Run the build.
-5. Verify the package tarball before release.
-
-Useful commands:
+## Local setup
 
 ```bash
-npm test
-npm run build
-npm pack --dry-run
+npm install
 ```
+
+## Run tests
+
+```bash
+npm run test
+```
+
+## Build
+
+```bash
+npm run build
+```
+
+## Run the CLI locally
+
+```bash
+npm run dev
+```
+
+## Report false positives
+
+If `next-secret-guard` flags code that is actually safe, please open an issue with:
+
+- the smallest possible reproduction
+- the reported file and line
+- the scanner output
+- why the pattern is safe in your case
+
+False-positive reports help us tune the rules while keeping the tool practical for real Next.js apps.
+
+## Propose new rules
+
+When suggesting a new rule or preset, include:
+
+- the risk you want to catch
+- a short example of risky code
+- why the rule is specific to Next.js secret exposure
+- how we can keep the signal high and the noise low
+
+## Pull request guidelines
+
+- Keep PRs focused and easy to review.
+- Add or update tests when behavior changes.
+- Update docs when user-facing behavior changes.
+- Explain the security impact of the change.
+- Prefer small, explicit heuristics over complex parsing.
 
 ## Release checklist
 
-Before publishing a release:
+Before a release, run:
 
-- Bump the version in `package.json`.
-- Update `CHANGELOG.md`.
-- Run `npm test`.
-- Run `npm run build`.
-- Run `npm pack --dry-run`.
-- Confirm the tarball only contains the intended files.
-- Publish using the GitHub Actions workflow or a trusted publishing flow.
-
-## Pull requests
-
-- Keep PRs focused.
-- Add or update tests when behavior changes.
-- Explain the risk being addressed by the change.
-- Call out any breaking changes clearly.
-
-## Code style
-
-- Use TypeScript.
-- Keep the scanner implementation simple and maintainable.
-- Prefer small, explicit heuristics over complex parsing.
+```bash
+npm run test
+npm run build
+npm pack --dry-run
+```

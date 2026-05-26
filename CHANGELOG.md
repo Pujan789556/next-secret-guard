@@ -1,12 +1,27 @@
 # Changelog
 
+All notable changes to this project will be documented in this file.
+
+This project follows semantic versioning where possible during the 0.x release phase.
+
 ## [Unreleased]
 
 ### Added
-- Initial `next-secret-guard` CLI scaffold.
-- Client Component import-chain scanning.
-- Config loading from TypeScript, JavaScript, and JSON files.
-- `allowedPublicEnv`, `secretPatterns`, `serverOnlyPaths`, and `failOn` configuration support.
+- GitHub repository polish files.
+- Issue templates for bug reports and feature requests.
+- CI workflow for test and build validation.
 
-### Notes
-- This project is still pre-1.0 and the API may change as the scanner rules mature.
+## [0.1.1]
+
+### Added
+- GitHub repository polish files.
+- Issue templates for bug reports and feature requests.
+- CI workflow for test and build validation.
+
+## [0.1.0]
+
+### Added
+- Initial public npm release of `next-secret-guard`.
+- CLI command for scanning Next.js projects.
+- Static checks for risky environment variable usage.
+- Basic secret exposure warnings for common providers.

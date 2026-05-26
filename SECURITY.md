@@ -1,26 +1,23 @@
 # Security Policy
 
-`next-secret-guard` is a security-oriented project, so responsible disclosure matters.
+`next-secret-guard` is a security-related project, but it is not a complete security audit. It is a guardrail for catching common Next.js secret exposure mistakes before they ship.
 
 ## Reporting a vulnerability
 
-If you believe you found a security issue in the package itself:
+Please report security concerns by opening a private security advisory on GitHub or by contacting the maintainer.
 
-1. Do not open a public issue with exploit details.
-2. Email the maintainers privately with the affected version, file, and reproduction steps.
-3. Include any relevant logs, proof of concept details, and expected impact.
+## Do not use public issues for sensitive reports
+
+Please do not create a public GitHub issue for vulnerabilities, proof-of-concept exploits, or other sensitive security details.
 
 ## What to include
 
-- The exact package version
-- The platform and Node.js version
-- Minimal reproduction steps
-- Whether the issue affects published artifacts or source code only
-
-## Response expectations
-
-We will try to acknowledge reports promptly, investigate impact, and coordinate a fix before public disclosure when appropriate.
+- the package version
+- the Node.js version
+- the operating system
+- minimal reproduction steps
+- the expected security impact
 
 ## Scope
 
-This policy covers vulnerabilities in the `next-secret-guard` package itself. It does not cover security issues in user applications scanned by the tool.
+This policy covers vulnerabilities in the `next-secret-guard` package itself. It does not cover security issues in applications that the tool scans.
