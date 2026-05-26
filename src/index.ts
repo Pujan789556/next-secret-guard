@@ -29,7 +29,6 @@ export type {
   PresetDefinition,
   ScanProjectOptions,
   ScanReport,
-  ScannerChecks,
   ScannerConfig,
   ScanSummary,
   Severity

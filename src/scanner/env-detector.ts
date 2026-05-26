@@ -17,7 +17,6 @@ export const BASE_SERVER_ENV_NAMES = [
 
 const SAFE_CLIENT_ENV_NAMES = new Set(["NODE_ENV", "NEXT_RUNTIME"]);
 const ENV_USAGE_PATTERN = /process\.env\.([A-Z0-9_]+)/g;
-const SUSPICIOUS_PUBLIC_ENV_PATTERN = /^NEXT_PUBLIC_(?:.*(?:SECRET|PRIVATE|SERVICE_ROLE|TOKEN).*)$/i;
 
 function lineNumberForIndex(source: string, index: number): number {
   return source.slice(0, index).split(/\r?\n/).length;
@@ -27,12 +26,25 @@ function buildIssueId(file: string, line: number, variableName: string): string 
   return `env:${file}:${line}:${variableName}`;
 }
 
-function isSuspiciousPublicEnvName(variableName: string): boolean {
-  return SUSPICIOUS_PUBLIC_ENV_PATTERN.test(variableName) || variableName === "NEXT_PUBLIC_SECRET";
+function escapeRegExp(value: string): string {
+  return value.replace(/[.+^${}()|[\]\\]/g, "\\$&");
 }
 
-function isServerEnvName(variableName: string, serverEnvNames: string[]): boolean {
-  return serverEnvNames.includes(variableName);
+function secretPatternsToRegex(secretPatterns: string[]): RegExp | undefined {
+  const patterns = secretPatterns
+    .map((pattern) => pattern.trim())
+    .filter((pattern) => Boolean(pattern));
+
+  if (patterns.length === 0) {
+    return undefined;
+  }
+
+  const escaped = patterns.map((pattern) => escapeRegExp(pattern));
+  return new RegExp(escaped.join("|"), "i");
+}
+
+function isAllowedPublicEnv(variableName: string, allowedPublicEnv: string[]): boolean {
+  return allowedPublicEnv.includes(variableName);
 }
 
 function createIssue(
@@ -60,12 +72,16 @@ export function detectEnvIssues(params: {
   file: string;
   source: string;
   serverEnvNames?: string[];
+  secretPatterns?: string[];
+  allowedPublicEnv?: string[];
   presets?: PresetDefinition[];
 }): Issue[] {
   const { file, source } = params;
   const serverEnvNames = Array.from(
     new Set([...(params.serverEnvNames ?? BASE_SERVER_ENV_NAMES), ...(params.presets ?? []).flatMap((preset) => preset.serverEnvNames)])
   );
+  const secretPatternRegex = secretPatternsToRegex(params.secretPatterns ?? []);
+  const allowedPublicEnv = params.allowedPublicEnv ?? [];
 
   const issues: Issue[] = [];
   const seen = new Set<string>();
@@ -81,12 +97,12 @@ export function detectEnvIssues(params: {
     }
     seen.add(key);
 
-    if (SAFE_CLIENT_ENV_NAMES.has(variableName)) {
+    if (SAFE_CLIENT_ENV_NAMES.has(variableName) || isAllowedPublicEnv(variableName, allowedPublicEnv)) {
       continue;
     }
 
     if (variableName.startsWith("NEXT_PUBLIC_")) {
-      if (!isSuspiciousPublicEnvName(variableName)) {
+      if (secretPatternRegex && !secretPatternRegex.test(variableName)) {
         continue;
       }
 
@@ -104,7 +120,7 @@ export function detectEnvIssues(params: {
       continue;
     }
 
-    if (isServerEnvName(variableName, serverEnvNames)) {
+    if (serverEnvNames.includes(variableName) || (secretPatternRegex && secretPatternRegex.test(variableName))) {
       issues.push(
         createIssue(
           file,

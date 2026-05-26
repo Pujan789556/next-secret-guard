@@ -23,44 +23,45 @@ export interface ScanReport {
   root: string;
   filesScanned: number;
   presetsUsed: string[];
+  failOn: Severity[];
   issues: Issue[];
   summary: ScanSummary;
-}
-
-export interface ScannerChecks {
-  publicEnvUsage: boolean;
-  clientBoundaryImports: boolean;
-  serverOnlyModuleReachability: boolean;
 }
 
 export interface ScannerConfig {
   include: string[];
   exclude: string[];
+  secretPatterns: string[];
+  allowedPublicEnv: string[];
+  serverOnlyPaths: string[];
+  failOn: Severity[];
   presets: string[];
-  failOn: Severity;
   framework?: string;
-  checks: ScannerChecks;
 }
 
 export interface ConfigFileInput {
   include?: string[];
   exclude?: string[];
+  secretPatterns?: string[];
+  allowedPublicEnv?: string[];
+  serverOnlyPaths?: string[];
+  failOn?: Severity[];
   presets?: string[];
-  failOn?: Severity;
   framework?: string;
-  checks?: Partial<ScannerChecks>;
 }
 
 export interface LoadConfigOptions {
   root: string;
   configPath?: string;
   presets?: string[];
+  failOn?: Severity[];
 }
 
 export interface ScanProjectOptions {
   root?: string;
   configPath?: string;
   presets?: string[];
+  failOn?: Severity[];
 }
 
 export interface PresetDefinition {

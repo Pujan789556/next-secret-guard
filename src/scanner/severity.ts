@@ -63,3 +63,7 @@ export function shouldFailScan(issues: Issue[]): boolean {
 export function shouldFailOnSeverity(issues: Issue[], threshold: Severity): boolean {
   return issues.some((issue) => severityMeetsThreshold(issue.severity, threshold));
 }
+
+export function shouldFailOnSeverities(issues: Issue[], thresholds: Severity[]): boolean {
+  return thresholds.some((threshold) => shouldFailOnSeverity(issues, threshold));
+}

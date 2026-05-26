@@ -121,14 +121,14 @@ Useful flags:
 
 - `--config <path>` load a custom config file
 - `--format text|json` choose human-readable or machine-readable output
-- `--fail-on <severity>` fail the process at a chosen threshold
+- `--fail-on <severity>` override the configured CI thresholds for a specific run
 - `--ignore <pattern>` ignore files or directories for known-safe cases
 - `--include <pattern>` scope scanning to specific paths
 
 Example: fail only on high-severity findings during local development, but keep informational findings visible:
 
 ```bash
-npx next-secret-guard scan --fail-on high
+npx next-secret-guard scan --fail-on HIGH
 ```
 
 Example: run a full scan and output JSON for automation:
@@ -247,34 +247,56 @@ Keep server-only exports out of shared barrels that can be imported by client-si
 
 ## Configuration
 
-You can keep configuration in a JSON file at the project root.
+`next-secret-guard` loads config automatically from the project root in this order:
 
-### `.next-secret-guard.json`
+1. `next-secret-guard.config.ts`
+2. `next-secret-guard.config.mjs`
+3. `next-secret-guard.config.js`
+4. `.next-secret-guard.json`
 
-```json
-{
-  "include": ["app", "src", "lib"],
-  "exclude": ["**/*.test.*", "**/*.spec.*", "node_modules"],
-  "failOn": "high",
-  "framework": "nextjs",
-  "checks": {
-    "publicEnvUsage": true,
-    "clientBoundaryImports": true,
-    "serverOnlyModuleReachability": true,
-    "providerPresets": ["supabase", "stripe", "prisma", "openai", "clerk", "authjs"]
-  }
+You can also point the CLI at an explicit file with `--config <path>`.
+
+### Example config
+
+```ts
+export default {
+  include: ["app/**/*.{ts,tsx,js,jsx}", "src/**/*.{ts,tsx,js,jsx}"],
+  exclude: ["node_modules/**", ".next/**", "dist/**"],
+  secretPatterns: [
+    "SECRET",
+    "TOKEN",
+    "PRIVATE_KEY",
+    "SERVICE_ROLE",
+    "DATABASE_URL"
+  ],
+  allowedPublicEnv: [
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"
+  ],
+  serverOnlyPaths: [
+    "src/server/**",
+    "server/**"
+  ],
+  failOn: ["HIGH", "MEDIUM"]
 }
 ```
 
+### Field guide
+
+- `include` controls which project folders and glob patterns are scanned.
+- `exclude` filters out build output, dependencies, tests, or other ignored paths.
+- `secretPatterns` defines the name fragments that make a `NEXT_PUBLIC_` variable suspicious.
+- `allowedPublicEnv` whitelists public env names that should never be flagged.
+- `serverOnlyPaths` marks path patterns that should be treated as server-only modules.
+- `failOn` controls which severities cause `--ci` to exit with code 1.
+
 ### Example overrides
 
-```json
-{
-  "failOn": "medium",
-  "ignore": ["src/legacy/**"],
-  "checks": {
-    "providerPresets": ["supabase", "stripe", "openai"]
-  }
+```ts
+export default {
+  exclude: ["src/legacy/**"],
+  allowedPublicEnv: ["NEXT_PUBLIC_API_BASE_URL"],
+  failOn: ["HIGH"]
 }
 ```
 
@@ -298,9 +320,12 @@ Suggested policy:
 Example text output:
 
 ```text
-next-secret-guard v0.1.0
+next-secret-guard scan
 
-Scanning 42 files...
+Root: /path/to/project
+Files scanned: 42
+Fail on: HIGH, MEDIUM
+Issues found: 4
 
 HIGH  app/components/Settings.tsx
   Client Component imports lib/supabase-admin.ts
@@ -317,7 +342,7 @@ INFO  app/page.tsx
   No risky public env usage found in this file
 
 Summary: 1 high, 1 medium, 1 low, 1 info
-Exit code: 1
+Exit code: 1 when an issue matches failOn, otherwise 0
 ```
 
 Example JSON output:
@@ -372,7 +397,7 @@ jobs:
         run: npm ci
 
       - name: Scan for secret exposure risks
-        run: npx next-secret-guard scan --fail-on high
+        run: npx next-secret-guard scan --ci
 ```
 
 If you want PR-friendly JSON for annotation workflows, use:
@@ -381,6 +406,8 @@ If you want PR-friendly JSON for annotation workflows, use:
 - name: Scan for secret exposure risks
   run: npx next-secret-guard scan --format json
 ```
+
+Use `--fail-on` only if you want to override the configured CI thresholds for a specific run.
 
 ## Provider presets
 

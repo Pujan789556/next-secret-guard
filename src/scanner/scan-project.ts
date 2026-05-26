@@ -6,7 +6,7 @@ import { isClientComponentSource, isServerOnlyModule } from "./client-boundary";
 import { buildImportGraph } from "./import-graph";
 import { detectEnvIssues, BASE_SERVER_ENV_NAMES } from "./env-detector";
 import { summarizeIssues } from "./severity";
-import type { Issue, PresetDefinition, ScanProjectOptions, ScanReport } from "./types";
+import type { Issue, PresetDefinition, ScanProjectOptions, ScanReport, Severity } from "./types";
 
 import { supabasePreset } from "../presets/supabase";
 import { stripePreset } from "../presets/stripe";
@@ -37,6 +37,10 @@ function normalizePresetNames(names: string[]): string[] {
   );
 }
 
+function normalizeSeverityList(values: Severity[] | undefined): Severity[] {
+  return Array.from(new Set(values ?? []));
+}
+
 function getPresetDefinitions(names: string[]): PresetDefinition[] {
   return names
     .map((name) => PRESET_REGISTRY[name])
@@ -49,10 +53,11 @@ function formatChain(chain: string[]): string {
 
 export async function scanProject(options: ScanProjectOptions = {}): Promise<ScanReport> {
   const root = path.resolve(options.root ?? process.cwd());
-  const config = loadConfig({
+  const config = await loadConfig({
     root,
     configPath: options.configPath,
-    presets: normalizePresetNames(options.presets ?? [])
+    presets: normalizePresetNames(options.presets ?? []),
+    failOn: normalizeSeverityList(options.failOn)
   });
   const presetDefinitions = getPresetDefinitions(config.presets);
 
@@ -91,21 +96,21 @@ export async function scanProject(options: ScanProjectOptions = {}): Promise<Sca
       const currentRelative = toPosixRelative(root, current.file);
       const edges = graph.get(current.file) ?? [];
 
-      if (config.checks.publicEnvUsage || config.checks.serverOnlyModuleReachability) {
-        for (const envIssue of detectEnvIssues({
-          file: currentRelative,
-          source: currentSource,
-          serverEnvNames: BASE_SERVER_ENV_NAMES,
-          presets: presetDefinitions
-        })) {
-          if (!issueIds.has(envIssue.id)) {
-            issueIds.add(envIssue.id);
-            issues.push(envIssue);
-          }
+      for (const envIssue of detectEnvIssues({
+        file: currentRelative,
+        source: currentSource,
+        serverEnvNames: BASE_SERVER_ENV_NAMES,
+        secretPatterns: config.secretPatterns,
+        allowedPublicEnv: config.allowedPublicEnv,
+        presets: presetDefinitions
+      })) {
+        if (!issueIds.has(envIssue.id)) {
+          issueIds.add(envIssue.id);
+          issues.push(envIssue);
         }
       }
 
-      if (isServerOnlyModule(currentRelative, currentSource)) {
+      if (isServerOnlyModule(currentRelative, currentSource, config.serverOnlyPaths)) {
         continue;
       }
 
@@ -115,7 +120,7 @@ export async function scanProject(options: ScanProjectOptions = {}): Promise<Sca
         const targetRelative = toPosixRelative(root, edge.target);
         const chain = [...current.chain, targetRelative];
 
-        if ((config.checks.clientBoundaryImports || config.checks.serverOnlyModuleReachability) && isServerOnlyModule(targetRelative, targetSource)) {
+        if (isServerOnlyModule(targetRelative, targetSource, config.serverOnlyPaths)) {
           const issueId = `reachability:${rootRelative}:${targetRelative}`;
           if (!issueIds.has(issueId)) {
             issueIds.add(issueId);
@@ -163,6 +168,7 @@ export async function scanProject(options: ScanProjectOptions = {}): Promise<Sca
     root,
     filesScanned: files.length,
     presetsUsed: presetDefinitions.map((preset) => preset.name),
+    failOn: config.failOn,
     issues,
     summary: summarizeIssues(issues)
   };

@@ -26,31 +26,31 @@ export function renderConsoleReport(report: ScanReport): string {
   lines.push(pc.bold("next-secret-guard scan"));
   lines.push(`Root: ${pc.dim(report.root)}`);
   lines.push(`Files scanned: ${report.filesScanned}`);
+  lines.push(`Fail on: ${report.failOn.length > 0 ? report.failOn.join(", ") : "none"}`);
   lines.push(`Issues found: ${report.summary.total}`);
   lines.push("");
 
   if (report.issues.length === 0) {
     lines.push(pc.green("No issues found."));
-    return lines.join("\n");
-  }
+  } else {
+    for (const severity of ["HIGH", "MEDIUM", "LOW", "INFO"] as const) {
+      const grouped = report.issues.filter((issue) => issue.severity === severity);
+      if (grouped.length === 0) {
+        continue;
+      }
 
-  for (const severity of ["HIGH", "MEDIUM", "LOW", "INFO"] as const) {
-    const grouped = report.issues.filter((issue) => issue.severity === severity);
-    if (grouped.length === 0) {
-      continue;
+      lines.push(`${SEVERITY_STYLES[severity](severity)} (${grouped.length})`);
+      for (const issue of grouped) {
+        lines.push(formatIssue(issue));
+      }
+      lines.push("");
     }
-
-    lines.push(`${SEVERITY_STYLES[severity](severity)} (${grouped.length})`);
-    for (const issue of grouped) {
-      lines.push(formatIssue(issue));
-    }
-    lines.push("");
   }
 
   lines.push(
     pc.bold("Summary:"),
     `  ${pc.red(`${report.summary.high} high`)}, ${pc.yellow(`${report.summary.medium} medium`)}, ${pc.cyan(`${report.summary.low} low`)}, ${pc.blue(`${report.summary.info} info`)}`,
-    `  Exit code: ${report.summary.high > 0 || report.summary.medium > 0 ? "1" : "0"}`
+    `  Exit code: ${report.failOn.length > 0 ? "1 when an issue matches failOn, otherwise 0" : "0"}`
   );
 
   return lines.join("\n");
