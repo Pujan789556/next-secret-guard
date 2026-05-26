@@ -1,6 +1,16 @@
 import fg from "fast-glob";
+import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { DEFAULT_CONFIG } from "../config/default-config";
+
+const ROOT_ENV_FILENAMES = [
+  ".env",
+  ".env.example",
+  ".env.local",
+  ".env.development",
+  ".env.production",
+  ".env.test"
+];
 
 function toGlobPath(segment: string): string {
   return segment.split(path.sep).join(path.posix.sep);
@@ -33,5 +43,19 @@ export async function discoverProjectFiles(
     unique: true,
     dot: false,
     ignore: exclude
+  });
+}
+
+export async function discoverRootEnvFiles(root: string): Promise<string[]> {
+  return ROOT_ENV_FILENAMES.map((fileName) => path.resolve(root, fileName)).filter((candidate) => {
+    if (!existsSync(candidate)) {
+      return false;
+    }
+
+    try {
+      return statSync(candidate).isFile();
+    } catch {
+      return false;
+    }
   });
 }

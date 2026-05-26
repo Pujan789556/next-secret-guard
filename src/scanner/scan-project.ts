@@ -1,10 +1,10 @@
 import path from "node:path";
 import { readFileSync } from "node:fs";
 import { loadConfig } from "../config/load-config";
-import { discoverProjectFiles } from "./file-discovery";
+import { discoverProjectFiles, discoverRootEnvFiles } from "./file-discovery";
 import { isClientComponentSource, isServerOnlyModule } from "./client-boundary";
 import { buildImportGraph } from "./import-graph";
-import { detectEnvIssues, BASE_SERVER_ENV_NAMES } from "./env-detector";
+import { detectEnvIssues, detectPublicEnvDeclarationIssues, BASE_SERVER_ENV_NAMES } from "./env-detector";
 import { summarizeIssues } from "./severity";
 import type { Issue, PresetDefinition, ScanProjectOptions, ScanReport, Severity } from "./types";
 
@@ -51,6 +51,10 @@ function formatChain(chain: string[]): string {
   return chain.join(" -> ");
 }
 
+function serverOnlySuggestion(): string {
+  return 'Move this file under src/server/ or add import "server-only" to prevent accidental client imports.';
+}
+
 export async function scanProject(options: ScanProjectOptions = {}): Promise<ScanReport> {
   const root = path.resolve(options.root ?? process.cwd());
   const config = await loadConfig({
@@ -62,6 +66,7 @@ export async function scanProject(options: ScanProjectOptions = {}): Promise<Sca
   const presetDefinitions = getPresetDefinitions(config.presets);
 
   const files = await discoverProjectFiles(root, config.include, config.exclude);
+  const rootEnvFiles = await discoverRootEnvFiles(root);
   const graph = buildImportGraph(files, root);
   const contentCache = new Map<string, string>();
   const issues: Issue[] = [];
@@ -132,7 +137,7 @@ export async function scanProject(options: ScanProjectOptions = {}): Promise<Sca
               file: rootRelative,
               line: current.entryLine,
               variableName: targetRelative,
-              suggestion: "Move server-only code behind a server action, route handler, or server component boundary."
+              suggestion: serverOnlySuggestion()
             });
           }
           continue;
@@ -145,6 +150,24 @@ export async function scanProject(options: ScanProjectOptions = {}): Promise<Sca
             entryLine: current.entryLine === 1 ? edge.line : current.entryLine
           });
         }
+      }
+    }
+  }
+
+  for (const envFile of rootEnvFiles) {
+    const envRelative = toPosixRelative(root, envFile);
+    const source = contentCache.get(envFile) ?? readFileSync(envFile, "utf8");
+    contentCache.set(envFile, source);
+
+    for (const envIssue of detectPublicEnvDeclarationIssues({
+      file: envRelative,
+      source,
+      secretPatterns: config.secretPatterns,
+      allowedPublicEnv: config.allowedPublicEnv
+    })) {
+      if (!issueIds.has(envIssue.id)) {
+        issueIds.add(envIssue.id);
+        issues.push(envIssue);
       }
     }
   }
@@ -166,7 +189,7 @@ export async function scanProject(options: ScanProjectOptions = {}): Promise<Sca
 
   return {
     root,
-    filesScanned: files.length,
+    filesScanned: files.length + rootEnvFiles.length,
     presetsUsed: presetDefinitions.map((preset) => preset.name),
     failOn: config.failOn,
     issues,

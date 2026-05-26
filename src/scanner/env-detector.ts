@@ -17,6 +17,8 @@ export const BASE_SERVER_ENV_NAMES = [
 
 const SAFE_CLIENT_ENV_NAMES = new Set(["NODE_ENV", "NEXT_RUNTIME"]);
 const ENV_USAGE_PATTERN = /process\.env\.([A-Z0-9_]+)/g;
+const DANGEROUS_PUBLIC_ENV_NAME_PATTERN = /^NEXT_PUBLIC_.*(?:SECRET|PRIVATE|SERVICE_ROLE|DATABASE_URL|JWT_SECRET).*$/i;
+const PUBLIC_ENV_DECLARATION_PATTERN = /(?:^|\n)\s*(?:export\s+)?(?:const\s+)?([A-Z0-9_]*NEXT_PUBLIC_[A-Z0-9_]+)\s*=/g;
 
 function lineNumberForIndex(source: string, index: number): number {
   return source.slice(0, index).split(/\r?\n/).length;
@@ -45,6 +47,10 @@ function secretPatternsToRegex(secretPatterns: string[]): RegExp | undefined {
 
 function isAllowedPublicEnv(variableName: string, allowedPublicEnv: string[]): boolean {
   return allowedPublicEnv.includes(variableName);
+}
+
+function isDangerousPublicEnvName(variableName: string, secretPatternRegex?: RegExp): boolean {
+  return DANGEROUS_PUBLIC_ENV_NAME_PATTERN.test(variableName) || Boolean(secretPatternRegex?.test(variableName));
 }
 
 function createIssue(
@@ -102,7 +108,7 @@ export function detectEnvIssues(params: {
     }
 
     if (variableName.startsWith("NEXT_PUBLIC_")) {
-      if (secretPatternRegex && !secretPatternRegex.test(variableName)) {
+      if (!isDangerousPublicEnvName(variableName, secretPatternRegex)) {
         continue;
       }
 
@@ -112,9 +118,9 @@ export function detectEnvIssues(params: {
           line,
           variableName,
           "HIGH",
-          "Suspicious public environment variable name",
+          "Dangerous public environment variable",
           `process.env.${variableName} looks like a secret or token, but it is prefixed with NEXT_PUBLIC_ and may be exposed to the browser bundle.`,
-          "Keep secret-like values on the server and pass only non-sensitive data to the client."
+          "Remove NEXT_PUBLIC_ from secrets. Only expose publishable/public keys."
         )
       );
       continue;
@@ -144,6 +150,49 @@ export function detectEnvIssues(params: {
         "Non-public environment variable in client-reachable code",
         `process.env.${variableName} is referenced from client-reachable code and should not be bundled for the browser.`,
         "Keep this variable on the server or expose only a derived non-sensitive value to the client."
+      )
+    );
+  }
+
+  return issues;
+}
+
+export function detectPublicEnvDeclarationIssues(params: {
+  file: string;
+  source: string;
+  allowedPublicEnv?: string[];
+  secretPatterns?: string[];
+}): Issue[] {
+  const { file, source } = params;
+  const secretPatternRegex = secretPatternsToRegex(params.secretPatterns ?? []);
+  const allowedPublicEnv = params.allowedPublicEnv ?? [];
+  const issues: Issue[] = [];
+  const seen = new Set<string>();
+
+  for (const match of source.matchAll(PUBLIC_ENV_DECLARATION_PATTERN)) {
+    const variableName = match[1];
+    const index = match.index ?? 0;
+    const line = lineNumberForIndex(source, index);
+    const key = `${variableName}:${line}`;
+
+    if (seen.has(key) || isAllowedPublicEnv(variableName, allowedPublicEnv)) {
+      continue;
+    }
+    seen.add(key);
+
+    if (!isDangerousPublicEnvName(variableName, secretPatternRegex)) {
+      continue;
+    }
+
+    issues.push(
+      createIssue(
+        file,
+        line,
+        variableName,
+        "HIGH",
+        "Dangerous public environment variable",
+        `${variableName} looks like a secret or token, but it is prefixed with NEXT_PUBLIC_ and may be exposed to the browser bundle.`,
+        "Remove NEXT_PUBLIC_ from secrets. Only expose publishable/public keys."
       )
     );
   }
