@@ -576,6 +576,10 @@ When contributing, please keep the project scope tight:
 - avoid turning the project into a generic security platform
 - prefer clear, actionable findings over noisy warnings
 
+Before publishing, run `npm pack --dry-run` and confirm the tarball only includes `dist`, `README.md`, `LICENSE`, `SECURITY.md`, and `CHANGELOG.md` alongside the required `package.json`.
+
+For the full contributor workflow and release checklist, see `CONTRIBUTING.md` in the repository.
+
 ## Security
 
 If you discover a security issue in the package itself, please report it responsibly.

@@ -9,6 +9,7 @@ test("loadConfig discovers the default TS config file and merges it with default
   });
 
   expect(config.include).toEqual(expect.arrayContaining(["app", "pages", "components", "src", "lib"]));
+  expect(config.include).toEqual(expect.arrayContaining(["app/**/*.{ts,tsx,js,jsx}", "src/**/*.{ts,tsx,js,jsx}"]));
   expect(config.secretPatterns).toEqual(expect.arrayContaining(["SECRET", "TOKEN", "PRIVATE_KEY", "SERVICE_ROLE", "DATABASE_URL"]));
   expect(config.allowedPublicEnv).toEqual(expect.arrayContaining(["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"]));
   expect(config.serverOnlyPaths).toEqual(expect.arrayContaining(["src/server/**", "server/**"]));
@@ -33,7 +34,7 @@ test("loadConfig supports an explicit config path", async () => {
     configPath: path.resolve("tests/fixtures/config-explicit/custom-config.mjs")
   });
 
-  expect(config.include).toEqual(expect.arrayContaining(["pages", "src"]));
+  expect(config.include).toEqual(expect.arrayContaining(["pages", "src", "pages/**/*.{ts,tsx,js,jsx}"]));
   expect(config.allowedPublicEnv).toContain("NEXT_PUBLIC_CUSTOM_URL");
   expect(config.serverOnlyPaths).toContain("custom/server/**");
   expect(config.failOn).toEqual(["HIGH"]);

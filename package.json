@@ -2,7 +2,24 @@
   "name": "next-secret-guard",
   "version": "0.1.0",
   "description": "CLI-first guardrails for accidental secret exposure in Next.js apps.",
+  "keywords": [
+    "nextjs",
+    "security",
+    "cli",
+    "secrets",
+    "scanner",
+    "environment-variables"
+  ],
+  "author": "Your Name <you@example.com>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/next-secret-guard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/next-secret-guard/issues"
+  },
+  "homepage": "https://github.com/your-org/next-secret-guard#readme",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -12,8 +29,13 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "SECURITY.md",
+    "CHANGELOG.md"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
     "dev": "tsx src/cli.ts scan",
@@ -32,12 +54,12 @@
   "dependencies": {
     "commander": "^12.1.0",
     "fast-glob": "^3.3.3",
-    "picocolors": "^1.1.1"
+    "picocolors": "^1.1.1",
+    "tsx": "^4.19.4"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
     "tsup": "^8.5.0",
-    "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vitest": "^3.1.4"
   }
