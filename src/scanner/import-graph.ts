@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import type { ImportEdge, ImportGraph } from "./types";
 
@@ -10,7 +10,21 @@ function isRelativeSpecifier(specifier: string): boolean {
 }
 
 function tryResolveCandidates(candidates: string[]): string | undefined {
-  return candidates.find((candidate) => existsSync(candidate));
+  for (const candidate of candidates) {
+    if (!existsSync(candidate)) {
+      continue;
+    }
+
+    try {
+      if (statSync(candidate).isFile()) {
+        return candidate;
+      }
+    } catch {
+      // Ignore unreadable paths and keep searching for a real file target.
+    }
+  }
+
+  return undefined;
 }
 
 function resolveFileTarget(candidateBase: string): string | undefined {

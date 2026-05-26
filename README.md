@@ -78,11 +78,33 @@ Files scanned: 42
 Fail on: HIGH, MEDIUM
 Issues found: 1
 
-HIGH  components/UserTable.tsx
-  Client component reaches server-only module
-  Reachability path: components/UserTable.tsx -> src/lib/users.ts -> src/server/db.ts
+Issues
 
-Summary: 1 high, 0 medium, 0 low, 0 info
++---------+----------------------------------------------------------------------------------+
+| Field   | Value                                                                            |
++---------+----------------------------------------------------------------------------------+
+| #       | 1                                                                                |
+| Severity | HIGH                                                                             |
+| File    | components/UserTable.tsx                                                         |
+| Line    | 4                                                                                |
+| Title   | Client component reaches server-only module                                      |
+| Message | Reachability path: components/UserTable.tsx -> src/lib/users.ts -> src/server/db.ts |
+| Suggestion | Move server-only code behind a server action, route handler, or server component boundary. |
+| Variable | src/server/db.ts                                                                 |
+| Path    | components/UserTable.tsx -> src/lib/users.ts -> src/server/db.ts                |
++---------+----------------------------------------------------------------------------------+
+
+Summary
+
++----------+-------+---------------------------+
+| Severity | Count | Meaning                   |
++----------+-------+---------------------------+
+| HIGH     | 1     | Blocks CI when configured |
+| MEDIUM   | 0     | Review before merge       |
+| LOW      | 0     | Track and clean up        |
+| INFO     | 0     | Informational only        |
++----------+-------+---------------------------+
+
 Exit code: 1 when an issue matches failOn, otherwise 0
 ```
 
@@ -375,21 +397,14 @@ Files scanned: 42
 Fail on: HIGH, MEDIUM
 Issues found: 4
 
-HIGH  app/components/Settings.tsx
-  Client Component imports lib/supabase-admin.ts
-  Sensitive server-only value may become reachable from browser code
+Issues
 
-MEDIUM lib/index.ts
-  Barrel export includes server-only module lib/server-secrets.ts
-  Shared entrypoint can widen client reachability
+... issue tables ...
 
-LOW   lib/public-helpers.ts
-  File name suggests shared usage; verify it does not import server-only dependencies
+Summary
 
-INFO  app/page.tsx
-  No risky public env usage found in this file
+... summary table with colored severity labels ...
 
-Summary: 1 high, 1 medium, 1 low, 1 info
 Exit code: 1 when an issue matches failOn, otherwise 0
 ```
 

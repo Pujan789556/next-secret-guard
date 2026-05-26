@@ -1,6 +1,6 @@
 import "tsx/esm";
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { DEFAULT_ALLOWED_PUBLIC_ENV, DEFAULT_CONFIG, DEFAULT_FAIL_ON, DEFAULT_SECRET_PATTERNS, DEFAULT_SERVER_ONLY_PATHS } from "./default-config";
@@ -48,13 +48,24 @@ function normalizeConfigShape(input: Partial<ConfigFileInput> | undefined): Conf
 
 function resolveConfigPath(root: string, configPath?: string): string | undefined {
   if (configPath) {
-    return path.isAbsolute(configPath) ? configPath : path.resolve(root, configPath);
+    const resolved = path.isAbsolute(configPath) ? configPath : path.resolve(root, configPath);
+    try {
+      return statSync(resolved).isFile() ? resolved : undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   for (const fileName of CONFIG_FILENAMES) {
     const candidate = path.resolve(root, fileName);
     if (existsSync(candidate)) {
-      return candidate;
+      try {
+        if (statSync(candidate).isFile()) {
+          return candidate;
+        }
+      } catch {
+        // Ignore unreadable candidates and keep scanning for a usable config file.
+      }
     }
   }
 

@@ -22,3 +22,12 @@ test("scanProject returns no findings for a cycle-only fixture", async () => {
   expect(report.summary.total).toBe(0);
   expect(report.issues).toHaveLength(0);
 });
+
+test("scanProject handles imports that resolve through a directory index file", async () => {
+  const report = await scanProject({
+    root: path.resolve("tests/fixtures/directory-import")
+  });
+
+  expect(report.summary.total).toBe(0);
+  expect(report.issues).toHaveLength(0);
+});

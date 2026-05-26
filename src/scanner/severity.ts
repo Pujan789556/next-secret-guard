@@ -1,5 +1,7 @@
 import type { Issue, Severity, ScanSummary } from "./types";
 
+export type { Severity } from "./types";
+
 export const SEVERITY_ORDER: Severity[] = ["HIGH", "MEDIUM", "LOW", "INFO"];
 
 const SEVERITY_RANK: Record<Severity, number> = {
